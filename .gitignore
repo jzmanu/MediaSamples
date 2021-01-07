@@ -30,8 +30,6 @@ proguard/
 # Android Studio Navigation editor temp files
 .navigation/
 
-# Android Studio captures folder
-captures/
 
 # IntelliJ
 *.iml
@@ -75,3 +73,5 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+/.idea/
+/build/
