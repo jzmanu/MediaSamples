@@ -1,31 +1,41 @@
 package com.manu.mediasamples
 
+import android.Manifest
 import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import com.manu.mediasamples.databinding.ActivityMainBinding
+import pub.devrel.easypermissions.AppSettingsDialog
+import pub.devrel.easypermissions.EasyPermissions
+import pub.devrel.easypermissions.PermissionRequest
 
 /**
- * MainActivity
+ * @Desc: MainActivity
+ * @Author: jzman
  */
-class MainActivity : AppCompatActivity(), View.OnClickListener {
+class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.PermissionCallbacks  {
     private lateinit var binding: ActivityMainBinding
+
+    companion object {
+        private const val TAG = "main_activity"
+        const val CAMERA_ID = "camera_id"
+        /** Camera权限请求Code */
+        private const val REQUEST_CODE_CAMERA = 0
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.btnFront.setOnClickListener(this)
-        binding.btnBack.setOnClickListener(this)
-
-        startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+        binding.btnCamera2.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
         when (v?.id) {
-            R.id.btnFront -> startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
-            R.id.btnBack -> startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+            R.id.btnCamera2 -> requestPermission()
         }
     }
 
@@ -35,8 +45,48 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         startActivity(intent)
     }
 
-    companion object {
-        const val CAMERA_ID = "camera_id"
+    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
+        Log.d(TAG, "onPermissionsGranted")
+        startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
     }
 
+    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
+        Log.d(TAG, "onPermissionsDenied")
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)){
+            AppSettingsDialog.Builder(this).build().show();
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            AppSettingsDialog.DEFAULT_SETTINGS_REQ_CODE -> {
+                startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+            }
+        }
+    }
+
+    private fun requestPermission() {
+        val permissions = arrayOf(Manifest.permission.CAMERA)
+        if (EasyPermissions.hasPermissions(this, *permissions)) {
+            startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+        }else{
+            EasyPermissions.requestPermissions(
+                PermissionRequest.Builder(this, REQUEST_CODE_CAMERA, *permissions)
+                    .setNegativeButtonText(getString(R.string.permission_negative))
+                    .setPositiveButtonText(getString(R.string.permission_positive))
+                    .setRationale(getString(R.string.request_camera_permission))
+                    .build()
+            )
+        }
+    }
 }

@@ -3,4 +3,8 @@
     <string name="request_camera_permission">请求相机权限</string>
     <string name="permission_positive">授予</string>
     <string name="permission_negative">取消</string>
+    <string name="record_start">录制开始…</string>
+    <string name="record_now">正在录制…</string>
+    <string name="record_none">还没开始录制…</string>
+    <string name="record_end">录制结束…</string>
 </resources>
