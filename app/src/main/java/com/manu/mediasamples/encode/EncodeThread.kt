@@ -39,8 +39,10 @@ class EncodeThread(var mMediaCodec: MediaCodec, var mMediaMuxer: MediaMuxer) : T
                 break
             }
 
+            // 返回已成功编码的输出缓冲区的索引
             var outputBufferId: Int = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0)
             if (outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                // 添加视频轨道
                 mTrackIndex = mMediaMuxer.addTrack(mMediaCodec.outputFormat)
                 mMediaMuxer.start()
                 mStartMuxer = true
@@ -50,6 +52,7 @@ class EncodeThread(var mMediaCodec: MediaCodec, var mMediaMuxer: MediaMuxer) : T
                         Log.i(TAG, "MediaMuxer not start")
                         continue
                     }
+                    // 获取有效数据
                     val outputBuffer = mMediaCodec.getOutputBuffer(outputBufferId) ?: continue
                     outputBuffer.position(bufferInfo.offset)
                     outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
@@ -57,6 +60,7 @@ class EncodeThread(var mMediaCodec: MediaCodec, var mMediaMuxer: MediaMuxer) : T
                         pts = bufferInfo.presentationTimeUs
                     }
                     bufferInfo.presentationTimeUs = bufferInfo.presentationTimeUs - pts
+                    // 将数据写入复用器以生成文件
                     mMediaMuxer.writeSampleData(mTrackIndex, outputBuffer, bufferInfo)
                     Log.d(
                         TAG,

@@ -34,7 +34,7 @@ import kotlin.coroutines.suspendCoroutine
  * @Desc: Camera2
  * @Author: jzman
  */
-class CameraActivity : AppCompatActivity(), View.OnClickListener{
+class CameraActivity : AppCompatActivity(), View.OnClickListener {
 
     private lateinit var binding: ActivityCameraBinding
     private lateinit var mCameraId: String
@@ -164,45 +164,44 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener{
      * 创建CaptureSession
      */
     @RequiresApi(Build.VERSION_CODES.P)
-    private suspend fun createCaptureSession(): CameraCaptureSession =
-        suspendCoroutine { cont ->
-            val outputs = mutableListOf<OutputConfiguration>()
-            outputs.add(OutputConfiguration(mSurface))
-            outputs.add(OutputConfiguration(EncodeManager.getSurface()))
-            val sessionConfiguration = SessionConfiguration(
-                SessionConfiguration.SESSION_REGULAR,
-                outputs, mExecutor, object : CameraCaptureSession.StateCallback() {
+    private suspend fun createCaptureSession(): CameraCaptureSession = suspendCoroutine { cont ->
+        val outputs = mutableListOf<OutputConfiguration>()
+        outputs.add(OutputConfiguration(mSurface))
+        outputs.add(OutputConfiguration(EncodeManager.getSurface()))
+        val sessionConfiguration = SessionConfiguration(
+            SessionConfiguration.SESSION_REGULAR,
+            outputs, mExecutor, object : CameraCaptureSession.StateCallback() {
 
-                    override fun onActive(session: CameraCaptureSession) {
-                        super.onActive(session)
-                        // 会话主动处理Capture Request
-                        Log.i(TAG, "onActive")
-                    }
+                override fun onActive(session: CameraCaptureSession) {
+                    super.onActive(session)
+                    // 会话主动处理Capture Request
+                    Log.i(TAG, "onActive")
+                }
 
-                    override fun onReady(session: CameraCaptureSession) {
-                        super.onReady(session)
-                        // 每次会话没有更多的Capture Request时调用
-                        // Camera完成自身配置没有Capture Request提交至会话也会调用
-                        // 会话完成所有的Capture Request会回调
-                        Log.i(TAG, "onReady")
-                    }
+                override fun onReady(session: CameraCaptureSession) {
+                    super.onReady(session)
+                    // 每次会话没有更多的Capture Request时调用
+                    // Camera完成自身配置没有Capture Request提交至会话也会调用
+                    // 会话完成所有的Capture Request会回调
+                    Log.i(TAG, "onReady")
+                }
 
-                    override fun onConfigureFailed(session: CameraCaptureSession) {
-                        val exc = RuntimeException("Camera $mCameraId session configuration failed")
-                        Log.e(TAG, exc.message, exc)
-                        cont.resumeWithException(exc)
-                    }
+                override fun onConfigureFailed(session: CameraCaptureSession) {
+                    val exc = RuntimeException("Camera $mCameraId session configuration failed")
+                    Log.e(TAG, exc.message, exc)
+                    cont.resumeWithException(exc)
+                }
 
-                    override fun onConfigured(session: CameraCaptureSession) {
-                        // Camera完成自身配置，会话开始处理请求
-                        // Capture Request已经在会话中排队，则立即调用onActive
-                        // 没有提交Capture Request则调用onReady
-                        Log.i(TAG, "onConfigured")
-                        cont.resume(session)
-                    }
-                })
-            mCameraDevice.createCaptureSession(sessionConfiguration)
-        }
+                override fun onConfigured(session: CameraCaptureSession) {
+                    // Camera完成自身配置，会话开始处理请求
+                    // Capture Request已经在会话中排队，则立即调用onActive
+                    // 没有提交Capture Request则调用onReady
+                    Log.i(TAG, "onConfigured")
+                    cont.resume(session)
+                }
+            })
+        mCameraDevice.createCaptureSession(sessionConfiguration)
+    }
 
     /**
      * 开启录制

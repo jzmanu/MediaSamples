@@ -69,7 +69,9 @@ object EncodeManager {
     private fun initCodec(width: Int, height: Int) {
         Log.i(TAG, "initCodec start")
         try {
+            // 创建MediaCodec
             mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            // 参数设置
             val mediaFormat = MediaFormat.createVideoFormat(MIME_TYPE, width, height)
             mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, COLOR_FORMAT_SURFACE) // 颜色采样格式
             mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, width * height * 4) // 比特率
@@ -86,8 +88,9 @@ object EncodeManager {
                     MediaCodecInfo.CodecProfileLevel.AVCLevel31
                 )
             }
+            // 配置状态
             mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-
+            // 创建Surface作为MediaCodec的输入，createInputSurface只能在configure与start之间调用创建Surface
             mSurface = mMediaCodec.createInputSurface()
         } catch (e: Exception) {
             Log.i(TAG, "initCodec fail:${e.message} ")

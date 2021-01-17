@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
         Log.d(TAG, "onPermissionsGranted")
-        startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+        startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             AppSettingsDialog.DEFAULT_SETTINGS_REQ_CODE -> {
-                startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+                startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
             }
         }
     }
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
     private fun requestPermission() {
         val permissions = arrayOf(Manifest.permission.CAMERA)
         if (EasyPermissions.hasPermissions(this, *permissions)) {
-            startCameraActivity(CameraCharacteristics.LENS_FACING_BACK.toString())
+            startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
         }else{
             EasyPermissions.requestPermissions(
                 PermissionRequest.Builder(this, REQUEST_CODE_CAMERA, *permissions)
