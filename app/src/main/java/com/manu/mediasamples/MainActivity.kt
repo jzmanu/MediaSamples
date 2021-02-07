@@ -7,7 +7,9 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import com.manu.mediasamples.async.CameraActivity2
 import com.manu.mediasamples.databinding.ActivityMainBinding
+import com.manu.mediasamples.sync.CameraActivity
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import pub.devrel.easypermissions.PermissionRequest

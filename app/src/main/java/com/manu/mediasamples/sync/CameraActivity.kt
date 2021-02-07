@@ -1,4 +1,4 @@
-package com.manu.mediasamples
+package com.manu.mediasamples.sync
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -19,8 +19,9 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import com.manu.mediasamples.MainActivity
+import com.manu.mediasamples.R
 import com.manu.mediasamples.databinding.ActivityCameraBinding
-import com.manu.mediasamples.encode.EncodeManager
 import com.manu.mediasamples.util.getPreviewOutputSize
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine

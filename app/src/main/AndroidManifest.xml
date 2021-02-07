@@ -15,11 +15,11 @@
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".CameraActivity"/>
+        <activity android:name=".sync.CameraActivity"/>
+        <activity android:name=".async.CameraActivity2"/>
     </application>
 
 </manifest>

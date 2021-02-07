@@ -1,16 +1,15 @@
-package com.manu.mediasamples.encode
+package com.manu.mediasamples.sync
 
 import android.media.MediaCodec
 import android.media.MediaMuxer
 import android.util.Log
-import android.view.Surface
 import kotlin.properties.Delegates
 
 /**
  * @Desc: 编码线程
  * @Author: jzman
  */
-class EncodeThread(var mMediaCodec: MediaCodec, var mMediaMuxer: MediaMuxer) : Thread() {
+class SyncEncodeThread(var mMediaCodec: MediaCodec, var mMediaMuxer: MediaMuxer) : Thread() {
     /** 结束编码标志 */
     var isStop = false
     /** 复用器开启的标志 */
