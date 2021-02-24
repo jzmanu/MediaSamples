@@ -9,7 +9,6 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.manu.mediasamples.async.CameraActivity2
 import com.manu.mediasamples.databinding.ActivityMainBinding
-import com.manu.mediasamples.sync.CameraActivity
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import pub.devrel.easypermissions.PermissionRequest
@@ -26,6 +25,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
         const val CAMERA_ID = "camera_id"
         /** Camera权限请求Code */
         private const val REQUEST_CODE_CAMERA = 0
+
+        /**  Camera id */
+        private const val CAMERA_TYPE  = CameraCharacteristics.LENS_FACING_BACK.toString()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,14 +44,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
     }
 
     private fun startCameraActivity(cameraId: String) {
-        val intent = Intent(this, CameraActivity::class.java)
+        val intent = Intent(this, CameraActivity2::class.java)
         intent.putExtra(CAMERA_ID, cameraId)
         startActivity(intent)
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
         Log.d(TAG, "onPermissionsGranted")
-        startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
+        startCameraActivity(CAMERA_TYPE)
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
@@ -72,7 +74,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             AppSettingsDialog.DEFAULT_SETTINGS_REQ_CODE -> {
-                startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
+                startCameraActivity(CAMERA_TYPE)
             }
         }
     }
@@ -80,7 +82,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener,EasyPermissions.P
     private fun requestPermission() {
         val permissions = arrayOf(Manifest.permission.CAMERA)
         if (EasyPermissions.hasPermissions(this, *permissions)) {
-            startCameraActivity(CameraCharacteristics.LENS_FACING_FRONT.toString())
+            startCameraActivity(CAMERA_TYPE)
         }else{
             EasyPermissions.requestPermissions(
                 PermissionRequest.Builder(this, REQUEST_CODE_CAMERA, *permissions)

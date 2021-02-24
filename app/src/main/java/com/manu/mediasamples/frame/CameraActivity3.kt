@@ -1,11 +1,13 @@
-package com.manu.mediasamples.sync
+package com.manu.mediasamples.frame
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
+import android.media.ImageReader
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -32,10 +34,10 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * @Desc: Camera2
+ * @Desc: Camera2+ImageReader
  * @Author: jzman
  */
-class CameraActivity : AppCompatActivity(), View.OnClickListener {
+class CameraActivity3 : AppCompatActivity(), View.OnClickListener {
 
     private lateinit var binding: ActivityCameraBinding
     private lateinit var mCameraId: String
@@ -51,6 +53,11 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
 
     private var mCameraThread = HandlerThread("CameraThread").apply { start() }
     private var mCameraHandler = Handler(mCameraThread.looper)
+
+    private lateinit var mImageReader: ImageReader
+    private var mImageThread = HandlerThread("ImageThread").apply { start() }
+    private var mImageHandler = Handler(mImageThread.looper)
+
     private var isRecordState = false;
 
     /**
@@ -68,7 +75,10 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     companion object {
-        private const val TAG = "CameraActivity"
+        private const val TAG = "CameraActivity3"
+
+        /** 渲染缓冲区中最大的图像数量 */
+        private const val IMAGE_BUFFER_SIZE: Int = 3
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
@@ -107,12 +117,22 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
 
     @SuppressLint("MissingPermission", "Recycle")
     private fun initCamera() = lifecycleScope.launch {
-        Log.i(TAG, "openCamera")
+        Log.i(TAG, "initCamera")
         // 打开Camera
         mCameraDevice = openCamera()
         // 初始化ImageReader
-        val size = Size(1080, 1920)
+        val size = Size(640, 480)
         mSurfaceTexture.setDefaultBufferSize(size.width, size.height)
+
+        mImageReader = ImageReader.newInstance(
+            size.width,
+            size.height,
+            ImageFormat.YUV_420_888,
+            IMAGE_BUFFER_SIZE
+        )
+        // 通知Image可用的回调，对ImageReader可以的每个帧都触发回调
+        mImageReader.setOnImageAvailableListener(ImageAvailableListener(), mImageHandler)
+
         // 创建CameraCaptureSession
         mCameraCaptureSession = createCaptureSession()
     }
@@ -166,7 +186,7 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
     private suspend fun createCaptureSession(): CameraCaptureSession = suspendCoroutine { cont ->
         val outputs = mutableListOf<OutputConfiguration>()
         outputs.add(OutputConfiguration(mSurface))
-        outputs.add(OutputConfiguration(EncodeManager.getSurface()))
+        outputs.add(OutputConfiguration(mImageReader.surface))
         val sessionConfiguration = SessionConfiguration(
             SessionConfiguration.SESSION_REGULAR,
             outputs, mExecutor, object : CameraCaptureSession.StateCallback() {
@@ -213,14 +233,13 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
                 Snackbar.LENGTH_LONG
             ).show()
         if (isRecordState) return@launch
-        EncodeManager.init(previewSize.width, previewSize.height)
+        AsyncInputEncodeManager.init(previewSize.width, previewSize.height)
         // 创建CameraCaptureSession
         mCameraCaptureSession = createCaptureSession()
 
         // 添加预览的Surface和生成Image的Surface
         mCaptureRequestBuild = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-        val sur = EncodeManager.getSurface()
-        mCaptureRequestBuild.addTarget(sur)
+        mCaptureRequestBuild.addTarget(mImageReader.surface)
         mCaptureRequestBuild.addTarget(mSurface)
 
         // 设置各种参数
@@ -233,7 +252,7 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
         )
 
         // 开始编码
-        EncodeManager.startEncode()
+        AsyncInputEncodeManager.startEncode()
         isRecordState = true
     }
 
@@ -253,7 +272,7 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
                 Snackbar.LENGTH_LONG
             ).show()
         if (!isRecordState) return
-        EncodeManager.stopEncode()
+        AsyncInputEncodeManager.stopEncode()
         isRecordState = false
     }
 
@@ -292,12 +311,57 @@ class CameraActivity : AppCompatActivity(), View.OnClickListener {
                 mSurfaceTexture::class.java
             )
 
+            AsyncInputEncodeManager.init(previewSize.width, previewSize.height)
             binding.textureView.setAspectRatio(previewSize.width, previewSize.height)
-            binding.textureView.post {
-                initCamera()
-            }
+            initCamera()
+        }
+    }
 
-            EncodeManager.init(previewSize.width, previewSize.height)
+    /**
+     *  通知Image可用的回调，对ImageReader可以的每个帧都触发回调
+     */
+    private inner class ImageAvailableListener : ImageReader.OnImageAvailableListener {
+        override fun onImageAvailable(reader: ImageReader) {
+            Log.i(TAG, "onImageAvailable")
+            // 实时获取最新的Image
+            val image = reader.acquireLatestImage() ?: return
+//            Log.i(
+//                TAG,
+//                "onImageAvailable > planes:" + image.planes.size
+//            )
+//
+//            Log.i(TAG, "image plane size:${image.planes.size}")
+//            Log.i(TAG, "image width:${image.width}")
+//            Log.i(TAG, "image height:${image.height}")
+//            Log.i(TAG, "image format:${image.format}")
+//            Log.i(TAG, "image timestamp:${image.timestamp}") // 时间戳，单位纳秒
+//
+//            image.planes.forEachIndexed { index, plane ->
+//                Log.i(TAG, "plane $index start")
+//                Log.i(TAG, "buffer capacity: ${plane.buffer.capacity()}")
+//                Log.i(TAG, "pixelStride: ${plane.pixelStride}") // 一行像素中两个连续像素值之间的距离，单位字节
+//                Log.i(TAG, "rowStride: ${plane.rowStride}") // 两个连续像素行的起点之间的距离，单位字节
+//                Log.i(TAG, "plane $index end")
+//            }
+//
+//            // 获取YUV数据
+            val byteBufferY = image.planes[0].buffer
+            val byteBufferYSize = byteBufferY.remaining()
+            val byteBufferU = image.planes[1].buffer
+            val byteBufferUSize = byteBufferU.remaining()
+            val byteBufferV = image.planes[2].buffer
+            val byteBufferVSize = byteBufferV.remaining()
+
+            // 填充YUV数据
+            val mYUVByteArray = ByteArray(byteBufferYSize + byteBufferUSize + byteBufferVSize)
+            byteBufferY.get(mYUVByteArray, 0, byteBufferYSize)
+            byteBufferU.get(mYUVByteArray, byteBufferYSize, byteBufferUSize)
+            byteBufferV.get(mYUVByteArray, byteBufferYSize + byteBufferUSize, byteBufferVSize)
+            AsyncInputEncodeManager.offer(mYUVByteArray)
+
+            image.close()
+
+            Log.i(TAG, "mYUVByteArray:${mYUVByteArray.size}")
         }
     }
 }

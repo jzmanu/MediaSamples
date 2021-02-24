@@ -51,7 +51,6 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
 
     private var mCameraThread = HandlerThread("CameraThread").apply { start() }
     private var mCameraHandler = Handler(mCameraThread.looper)
-    private var mDataThread = HandlerThread("DataThread").apply { start() }
     private var isRecordState = false;
 
     /**
@@ -103,7 +102,6 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
     override fun onDestroy() {
         super.onDestroy()
         mCameraThread.quitSafely()
-        mDataThread.quitSafely()
         mExecutor.shutdownNow()
     }
 

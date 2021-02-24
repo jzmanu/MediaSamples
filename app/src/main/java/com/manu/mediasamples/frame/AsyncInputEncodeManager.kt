@@ -1,35 +1,35 @@
-package com.manu.mediasamples.async
+package com.manu.mediasamples.frame
 
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaFormat
-import android.media.MediaMuxer
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.media.*
 import android.os.Build
 import android.util.Log
-import android.view.Surface
 import com.manu.mediasamples.app.MediaApplication
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.util.concurrent.LinkedBlockingQueue
 import kotlin.properties.Delegates
 
+
 /**
- * @Desc:AsyncEncodeManager
+ * @Desc:AsyncInputEncodeManager
  * @Author: jzman
  */
-object AsyncEncodeManager : MediaCodec.Callback(){
-    private const val TAG = "AsyncEncodeManager"
+object AsyncInputEncodeManager : MediaCodec.Callback(){
+    private const val TAG = "AsyncInputEncodeManager"
     private const val MIME_TYPE = MediaFormat.MIMETYPE_VIDEO_AVC
     private const val COLOR_FORMAT_SURFACE =
         MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
     private lateinit var mMediaCodec: MediaCodec
     private lateinit var mMediaMuxer: MediaMuxer
 
-    /** 用作数据流输入的Surface */
-    private lateinit var mSurface: Surface
-
     private var pts:Long = 0
 
     /** 轨道索引 */
     private var mTrackIndex by Delegates.notNull<Int>()
+
+    private var mQuene: LinkedBlockingQueue<FrameData> = LinkedBlockingQueue()
 
     /**
      * 初始化
@@ -38,13 +38,6 @@ object AsyncEncodeManager : MediaCodec.Callback(){
         Log.d(TAG, "init")
         initCodec(width, height)
         initMuxer()
-    }
-
-    /**
-     * 获取用作输入流输入的Surface
-     */
-    fun getSurface(): Surface {
-        return mSurface
     }
 
     /**
@@ -62,6 +55,21 @@ object AsyncEncodeManager : MediaCodec.Callback(){
         Log.d(TAG, "stopEncode")
         mMediaCodec.stop()
         mMediaMuxer.stop()
+    }
+
+    /**
+     * 添加新帧
+     */
+    fun offer(byteArray: ByteArray) {
+        val temp = mQuene.offer(FrameData(byteArray, System.nanoTime()))
+        Log.i(TAG, "offer return:$temp")
+    }
+
+    /**
+     * 取出新帧
+     */
+    fun poll(): FrameData? {
+        return mQuene.poll()
     }
 
     /**
@@ -95,8 +103,6 @@ object AsyncEncodeManager : MediaCodec.Callback(){
             mMediaCodec.setCallback(this)
             // 配置状态
             mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            // 创建Surface作为MediaCodec的输入，createInputSurface只能在configure与start之间调用创建Surface
-            mSurface = mMediaCodec.createInputSurface()
         } catch (e: Exception) {
             Log.i(TAG, "initCodec fail:${e.message} ")
             e.printStackTrace()
@@ -119,7 +125,6 @@ object AsyncEncodeManager : MediaCodec.Callback(){
         }
     }
 
-
     override fun onOutputBufferAvailable(
         codec: MediaCodec,
         index: Int,
@@ -138,6 +143,25 @@ object AsyncEncodeManager : MediaCodec.Callback(){
 
     override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
         Log.d(TAG,"onInputBufferAvailable index:$index")
+
+        // 测试发现仅回调几次，导致获取的帧数据不断添加导致OOM，后续完善
+        val data = poll()
+        // 获取空的缓冲区
+        val inputBuffer = mMediaCodec.getInputBuffer(index)
+        if (data == null) return
+        val buffer = data.buffer
+        if (inputBuffer != null) {
+            inputBuffer.clear()
+            inputBuffer.put(buffer)
+        }
+
+        mMediaCodec.queueInputBuffer(
+            index,
+            0,
+            buffer.size,
+            System.nanoTime() / 1000,
+            0
+        )
     }
 
     override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
@@ -149,4 +173,9 @@ object AsyncEncodeManager : MediaCodec.Callback(){
     override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
         Log.d(TAG,"onError e:${e.message}")
     }
+
+    /**
+     * ImageReader获取的帧数据的封装
+     */
+    class FrameData(var buffer: ByteArray, var timeStamp: Long)
 }
