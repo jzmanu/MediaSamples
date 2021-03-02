@@ -7,4 +7,6 @@
     <string name="record_now">正在录制…</string>
     <string name="record_none">还没开始录制…</string>
     <string name="record_end">录制结束…</string>
+
+    <string name="camera_error">Camera2 open error.</string>
 </resources>

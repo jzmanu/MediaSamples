@@ -445,4 +445,6 @@ public class YUVTools {
         Log.i("jzman", "getBytesFromImageReader > size: "+mYUVByteArray.length);
         return mYUVByteArray;
     }
+
+
 }

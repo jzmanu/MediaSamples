@@ -1,13 +1,13 @@
 package com.manu.mediasamples.frame
 
-import android.graphics.ImageFormat
-import android.graphics.Rect
-import android.media.*
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaFormat
+import android.media.MediaMuxer
 import android.os.Build
 import android.util.Log
 import com.manu.mediasamples.app.MediaApplication
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.properties.Delegates
 
@@ -19,12 +19,12 @@ import kotlin.properties.Delegates
 object AsyncInputEncodeManager : MediaCodec.Callback(){
     private const val TAG = "AsyncInputEncodeManager"
     private const val MIME_TYPE = MediaFormat.MIMETYPE_VIDEO_AVC
-    private const val COLOR_FORMAT_SURFACE =
-        MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
     private lateinit var mMediaCodec: MediaCodec
     private lateinit var mMediaMuxer: MediaMuxer
 
     private var pts:Long = 0
+    private var isMuxer = false
+    private var isStop = false
 
     /** 轨道索引 */
     private var mTrackIndex by Delegates.notNull<Int>()
@@ -46,6 +46,7 @@ object AsyncInputEncodeManager : MediaCodec.Callback(){
     fun startEncode() {
         Log.d(TAG, "startEncode")
         mMediaCodec.start()
+        isStop = false
     }
 
     /**
@@ -54,22 +55,31 @@ object AsyncInputEncodeManager : MediaCodec.Callback(){
     fun stopEncode() {
         Log.d(TAG, "stopEncode")
         mMediaCodec.stop()
-        mMediaMuxer.stop()
+        mMediaCodec.release()
+        if (isMuxer){
+            mMediaMuxer.stop()
+            mMediaMuxer.release()
+        }
+        isStop = true
     }
 
     /**
      * 添加新帧
      */
-    fun offer(byteArray: ByteArray) {
-        val temp = mQuene.offer(FrameData(byteArray, System.nanoTime()))
+    fun offer(byteArray: ByteArray, timeStamp: Long) {
+        val temp = mQuene.offer(FrameData(byteArray, timeStamp))
         Log.i(TAG, "offer return:$temp")
     }
 
     /**
      * 取出新帧
      */
-    fun poll(): FrameData? {
+    private fun poll(): FrameData? {
         return mQuene.poll()
+    }
+
+    fun isStop():Boolean{
+        return isStop
     }
 
     /**
@@ -79,15 +89,16 @@ object AsyncInputEncodeManager : MediaCodec.Callback(){
         Log.d(TAG, "initCodec start")
         try {
             // 创建MediaCodec
-            mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE)
             // 参数设置
-            val mediaFormat = MediaFormat.createVideoFormat(MIME_TYPE, width, height)
+            val mediaFormat = MediaFormat.createVideoFormat(MIME_TYPE, 1920, 1080)
             mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                COLOR_FORMAT_SURFACE
-            ) // 颜色采样格式
-            mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, width * height * 4) // 比特率
-            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30) // 帧率
-            mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1) // I帧间隔
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
+            )
+            // 颜色采样格式
+            mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2000000) // 比特率
+            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 15) // 帧率
+            mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10) // I帧间隔
 
             mediaFormat.setInteger(
                 MediaFormat.KEY_PROFILE,
@@ -144,30 +155,43 @@ object AsyncInputEncodeManager : MediaCodec.Callback(){
     override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
         Log.d(TAG,"onInputBufferAvailable index:$index")
 
-        // 测试发现仅回调几次，导致获取的帧数据不断添加导致OOM，后续完善
-        val data = poll()
         // 获取空的缓冲区
-        val inputBuffer = mMediaCodec.getInputBuffer(index)
-        if (data == null) return
-        val buffer = data.buffer
-        if (inputBuffer != null) {
-            inputBuffer.clear()
-            inputBuffer.put(buffer)
-        }
+        val inputBuffer = codec.getInputBuffer(index)
 
-        mMediaCodec.queueInputBuffer(
-            index,
-            0,
-            buffer.size,
-            System.nanoTime() / 1000,
-            0
-        )
+        val data = poll()
+        try {
+            if (data != null) {
+                if (inputBuffer != null) {
+                    inputBuffer.clear()
+                    inputBuffer.put(data.buffer)
+                    codec.queueInputBuffer(
+                        index,
+                        0,
+                        data.buffer.size,
+                        System.nanoTime() / 1000,
+                        0
+                    )
+                }
+            } else {
+                //EOS
+                codec.queueInputBuffer(
+                    index,
+                    0, 0, 0, 0
+                )
+            }
+        } catch (e: Exception) {
+            println("error:${e.message}")
+            println("error:${e.localizedMessage}")
+            inputBuffer!!.clear()
+            e.printStackTrace()
+        }
     }
 
     override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
         Log.d(TAG,"onOutputFormatChanged format:${format}")
         mTrackIndex = mMediaMuxer.addTrack(format)
         mMediaMuxer.start()
+        isMuxer = true
     }
 
     override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
