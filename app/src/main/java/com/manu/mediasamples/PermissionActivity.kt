@@ -59,7 +59,7 @@ class PermissionActivity : AppCompatActivity(),EasyPermissions.PermissionCallbac
     }
 
     private fun requestPermission() {
-        val permissions = arrayOf(Manifest.permission.CAMERA)
+        val permissions = arrayOf(Manifest.permission.CAMERA,Manifest.permission.RECORD_AUDIO)
         if (EasyPermissions.hasPermissions(this, *permissions)) {
             startMainActivity()
         }else{

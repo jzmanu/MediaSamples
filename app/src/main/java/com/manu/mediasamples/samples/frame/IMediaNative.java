@@ -1,4 +1,4 @@
-package com.manu.mediasamples.frame;
+package com.manu.mediasamples.samples.frame;
 
 import java.nio.ByteBuffer;
 

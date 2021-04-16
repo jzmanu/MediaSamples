@@ -1,4 +1,4 @@
-package com.manu.mediasamples.sync
+package com.manu.mediasamples.samples.sync
 
 import android.media.MediaCodec
 import android.media.MediaMuxer

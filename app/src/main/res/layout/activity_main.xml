@@ -23,7 +23,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="同步模式"
+        android:text="Sync"
         app:layout_constraintEnd_toEndOf="@+id/btnImageReader"
         app:layout_constraintStart_toStartOf="@+id/btnImageReader"
         app:layout_constraintTop_toBottomOf="@+id/btnImageReader" />
@@ -33,9 +33,19 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="异步模式"
+        android:text="Async"
         app:layout_constraintEnd_toEndOf="@+id/btnSync"
         app:layout_constraintStart_toStartOf="@+id/btnSync"
         app:layout_constraintTop_toBottomOf="@+id/btnSync" />
+
+    <Button
+        android:id="@+id/btnRecord"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="RECORD"
+        app:layout_constraintEnd_toEndOf="@+id/btnAsync"
+        app:layout_constraintStart_toStartOf="@+id/btnAsync"
+        app:layout_constraintTop_toBottomOf="@+id/btnAsync" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

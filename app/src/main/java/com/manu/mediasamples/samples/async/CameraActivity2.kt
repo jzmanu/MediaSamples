@@ -1,4 +1,4 @@
-package com.manu.mediasamples.async
+package com.manu.mediasamples.samples.async
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -17,19 +17,12 @@ import android.view.TextureView
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.manu.mediasamples.MainActivity
 import com.manu.mediasamples.R
 import com.manu.mediasamples.databinding.ActivityCameraBinding
-import com.manu.mediasamples.util.getPreviewOutputSize
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 /**
  * @Desc: Camera2
@@ -51,7 +44,9 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
 
     private var mCameraThread = HandlerThread("CameraThread").apply { start() }
     private var mCameraHandler = Handler(mCameraThread.looper)
+
     private var isRecordState = false;
+    private var isCameraState = false;
 
     /**
      * 获取CameraManager
@@ -68,7 +63,7 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
     }
 
     companion object {
-        private const val TAG = "CameraActivity"
+        private const val TAG = "CameraActivity2"
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
@@ -80,9 +75,12 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
         binding.btnStop.setOnClickListener(this)
         mCameraId = intent.getStringExtra(MainActivity.CAMERA_ID).toString()
         mExecutor = Executors.newSingleThreadExecutor()
+        previewSize = Size(1920, 1080)
+        binding.textureView.setAspectRatio(previewSize.width, previewSize.height)
         binding.textureView.surfaceTextureListener = TextureListener()
     }
 
+    @RequiresApi(Build.VERSION_CODES.N)
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btnRecord -> startRecord()
@@ -106,38 +104,36 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
     }
 
     @SuppressLint("MissingPermission", "Recycle")
-    private fun initCamera() = lifecycleScope.launch {
+    private fun initCamera() {
         Log.i(TAG, "initCamera")
         // 打开Camera
-        mCameraDevice = openCamera()
-        // 初始化ImageReader
-        val size = Size(1080, 1920)
-        mSurfaceTexture.setDefaultBufferSize(size.width, size.height)
-        // 创建CameraCaptureSession
-        mCameraCaptureSession = createCaptureSession()
+        openCamera()
     }
 
     /**
      * 打开Camera
      */
     @SuppressLint("MissingPermission")
-    private suspend fun openCamera(): CameraDevice = suspendCancellableCoroutine { cont ->
+    private fun openCamera() {
         mCameraManager.openCamera(mCameraId, object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
                 // 设备开启
                 Log.i(TAG, "onOpened")
-                cont.resume(camera)
+                mCameraDevice = camera
+                isCameraState = true
             }
 
             override fun onDisconnected(camera: CameraDevice) {
                 // 设备断开
                 Log.i(TAG, "onDisconnected")
+                isCameraState = false
                 finish()
             }
 
             override fun onError(camera: CameraDevice, error: Int) {
                 // 意外错误
                 Log.i(TAG, "onError:$error")
+                isCameraState = false
                 val msg = when (error) {
                     ERROR_CAMERA_DEVICE -> "Fatal (device)"
                     ERROR_CAMERA_DISABLED -> "Device policy"
@@ -148,22 +144,50 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
                 }
                 val exc = RuntimeException("Camera  error: ($error) $msg")
                 Log.e(TAG, exc.message, exc)
-                if (cont.isActive) cont.resumeWithException(exc)
             }
 
             override fun onClosed(camera: CameraDevice) {
                 super.onClosed(camera)
                 // 设备关闭，CameraDevice的close方法触发
                 Log.i(TAG, "onClosed")
+                isCameraState = false
             }
         }, mCameraHandler)
     }
 
     /**
-     * 创建CaptureSession
+     * 开启录制
      */
-    @RequiresApi(Build.VERSION_CODES.P)
-    private suspend fun createCaptureSession(): CameraCaptureSession = suspendCoroutine { cont ->
+    @RequiresApi(Build.VERSION_CODES.N)
+    private fun startRecord()  {
+        AsyncEncodeManager.init(previewSize.width, previewSize.height)
+        if (!isCameraState) {
+            Snackbar.make(
+                binding.container,
+                getString(R.string.camera_error),
+                Snackbar.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        Snackbar.make(
+            binding.container,
+            getString(if (isRecordState) R.string.record_now else R.string.record_start),
+            Snackbar.LENGTH_LONG
+        ).show()
+        if (isRecordState) return
+
+        mSurfaceTexture = binding.textureView.surfaceTexture!!
+        mSurface = Surface(mSurfaceTexture)
+
+
+        mSurfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
+
+        // 添加预览的Surface和作为输入的Surface
+        mCaptureRequestBuild = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+        mCaptureRequestBuild.addTarget(mSurface)
+        mCaptureRequestBuild.addTarget(AsyncEncodeManager.getSurface())
+
         val outputs = mutableListOf<OutputConfiguration>()
         outputs.add(OutputConfiguration(mSurface))
         outputs.add(OutputConfiguration(AsyncEncodeManager.getSurface()))
@@ -188,7 +212,6 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
                 override fun onConfigureFailed(session: CameraCaptureSession) {
                     val exc = RuntimeException("Camera $mCameraId session configuration failed")
                     Log.e(TAG, exc.message, exc)
-                    cont.resumeWithException(exc)
                 }
 
                 override fun onConfigured(session: CameraCaptureSession) {
@@ -196,45 +219,25 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
                     // Capture Request已经在会话中排队，则立即调用onActive
                     // 没有提交Capture Request则调用onReady
                     Log.i(TAG, "onConfigured")
-                    cont.resume(session)
+                    mCameraCaptureSession = session
+
+                    // 设置各种参数
+                    mCaptureRequestBuild.set(
+                        CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, // 视频稳定功能是否激活
+                        1
+                    )
+                    // 发送CaptureRequest
+                    mCameraCaptureSession.setRepeatingRequest(
+                        mCaptureRequestBuild.build(),
+                        null,
+                        mCameraHandler
+                    )
+                    // 开始编码
+                    AsyncEncodeManager.startEncode()
+                    isRecordState = true
                 }
             })
         mCameraDevice.createCaptureSession(sessionConfiguration)
-    }
-
-    /**
-     * 开启录制
-     */
-    private fun startRecord() = lifecycleScope.launch {
-        Snackbar
-            .make(
-                binding.container,
-                getString(if (isRecordState) R.string.record_now else R.string.record_start),
-                Snackbar.LENGTH_LONG
-            ).show()
-        if (isRecordState) return@launch
-        AsyncEncodeManager.init(previewSize.width, previewSize.height)
-        // 创建CameraCaptureSession
-        mCameraCaptureSession = createCaptureSession()
-
-        // 添加预览的Surface和生成Image的Surface
-        mCaptureRequestBuild = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-        val sur = AsyncEncodeManager.getSurface()
-        mCaptureRequestBuild.addTarget(sur)
-        mCaptureRequestBuild.addTarget(mSurface)
-
-        // 设置各种参数
-        mCaptureRequestBuild.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, 1) // 视频稳定功能是否激活
-        // 发送CaptureRequest
-        mCameraCaptureSession.setRepeatingRequest(
-            mCaptureRequestBuild.build(),
-            null,
-            mCameraHandler
-        )
-
-        // 开始编码
-        AsyncEncodeManager.startEncode()
-        isRecordState = true
     }
 
     /**
@@ -254,6 +257,7 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
             ).show()
         if (!isRecordState) return
         AsyncEncodeManager.stopEncode()
+        closeCaptureSession()
         isRecordState = false
     }
 
@@ -282,26 +286,16 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
             // surfaceTexture可用的时候调用
             Log.i(TAG, "onSurfaceTextureAvailable")
 
-            mSurfaceTexture = binding.textureView.surfaceTexture!!
-            mSurface = Surface(mSurfaceTexture)
-
             // 获取合适的预览大小
-            previewSize = getPreviewOutputSize(
-                binding.textureView.display,
-                mCameraCharacteristics,
-                mSurfaceTexture::class.java
-            )
+//            previewSize = getPreviewOutputSize(
+//                binding.textureView.display,
+//                mCameraCharacteristics,
+//                mSurfaceTexture::class.java
+//            )
 
-            AsyncEncodeManager.init(previewSize.width, previewSize.height)
-            binding.textureView.setAspectRatio(previewSize.width, previewSize.height)
             initCamera()
         }
     }
-
-    /**
-     * ImageReader获取的帧数据的封装
-     */
-    class FrameData(var buffer: ByteArray, var timeStamp: Long)
 }
 
 

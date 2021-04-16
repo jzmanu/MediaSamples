@@ -3,6 +3,7 @@
     package="com.manu.mediasamples">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".app.MediaApplication"
@@ -20,9 +21,10 @@
             </intent-filter>
         </activity>
         <activity android:name=".MainActivity"/>
-        <activity android:name=".sync.CameraActivity" />
-        <activity android:name=".async.CameraActivity2" />
-        <activity android:name=".frame.CameraActivity3" />
+        <activity android:name="com.manu.mediasamples.samples.sync.CameraActivity" />
+        <activity android:name="com.manu.mediasamples.samples.async.CameraActivity2" />
+        <activity android:name="com.manu.mediasamples.samples.frame.CameraActivity3" />
+        <activity android:name="com.manu.mediasamples.samples.record.RecordActivity" />
     </application>
 
 </manifest>

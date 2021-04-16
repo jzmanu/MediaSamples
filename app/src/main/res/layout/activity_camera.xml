@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".sync.CameraActivity">
+    tools:context=".samples.sync.CameraActivity">
 
     <com.manu.mediasamples.util.AutoFitTextureView
         android:id="@+id/textureView"
