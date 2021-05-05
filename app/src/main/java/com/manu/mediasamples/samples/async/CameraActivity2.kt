@@ -80,7 +80,7 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
         binding.textureView.surfaceTextureListener = TextureListener()
     }
 
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btnRecord -> startRecord()
@@ -158,7 +158,7 @@ class CameraActivity2 : AppCompatActivity(), View.OnClickListener {
     /**
      * 开启录制
      */
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun startRecord()  {
         AsyncEncodeManager.init(previewSize.width, previewSize.height)
         if (!isCameraState) {

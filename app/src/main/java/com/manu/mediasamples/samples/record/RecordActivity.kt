@@ -21,6 +21,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.manu.mediasamples.MainActivity
 import com.manu.mediasamples.R
 import com.manu.mediasamples.databinding.ActivityCameraBinding
+import com.manu.mediasamples.util.L
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -63,7 +64,8 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     companion object {
-        private const val TAG = "CameraActivity2"
+        private const val TAG = "RecordActivity"
+        lateinit var activity: RecordActivity
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
@@ -71,6 +73,7 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
         super.onCreate(savedInstanceState)
         binding = ActivityCameraBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        activity = this
         binding.btnRecord.setOnClickListener(this)
         binding.btnStop.setOnClickListener(this)
         mCameraId = intent.getStringExtra(MainActivity.CAMERA_ID).toString()
@@ -80,7 +83,7 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
         binding.textureView.surfaceTextureListener = TextureListener()
     }
 
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btnRecord -> startRecord()
@@ -93,7 +96,7 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
         try {
             mCameraDevice.close()
         } catch (exc: Throwable) {
-            Log.e(TAG, "Error closing camera", exc)
+            L.e(TAG, "Error closing camera", exc)
         }
     }
 
@@ -105,7 +108,7 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
 
     @SuppressLint("MissingPermission", "Recycle")
     private fun initCamera() {
-        Log.i(TAG, "initCamera")
+        L.i(TAG, "initCamera")
         // 打开Camera
         openCamera()
     }
@@ -118,21 +121,21 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
         mCameraManager.openCamera(mCameraId, object : CameraDevice.StateCallback() {
             override fun onOpened(camera: CameraDevice) {
                 // 设备开启
-                Log.i(TAG, "onOpened")
+                L.i(TAG, "onOpened")
                 mCameraDevice = camera
                 isCameraState = true
             }
 
             override fun onDisconnected(camera: CameraDevice) {
                 // 设备断开
-                Log.i(TAG, "onDisconnected")
+                L.i(TAG, "onDisconnected")
                 isCameraState = false
                 finish()
             }
 
             override fun onError(camera: CameraDevice, error: Int) {
                 // 意外错误
-                Log.i(TAG, "onError:$error")
+                L.i(TAG, "onError:$error")
                 isCameraState = false
                 val msg = when (error) {
                     ERROR_CAMERA_DEVICE -> "Fatal (device)"
@@ -143,13 +146,13 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
                     else -> "Unknown"
                 }
                 val exc = RuntimeException("Camera  error: ($error) $msg")
-                Log.e(TAG, exc.message, exc)
+                L.e(TAG, exc.message, exc)
             }
 
             override fun onClosed(camera: CameraDevice) {
                 super.onClosed(camera)
                 // 设备关闭，CameraDevice的close方法触发
-                Log.i(TAG, "onClosed")
+                L.i(TAG, "onClosed")
                 isCameraState = false
             }
         }, mCameraHandler)
@@ -158,8 +161,9 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
     /**
      * 开启录制
      */
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun startRecord()  {
+        L.i(TAG, "startRecord")
         EncodeManager.init(previewSize.width, previewSize.height)
         if (!isCameraState) {
             Snackbar.make(
@@ -180,7 +184,6 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
         mSurfaceTexture = binding.textureView.surfaceTexture!!
         mSurface = Surface(mSurfaceTexture)
 
-
         mSurfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
 
         // 添加预览的Surface和作为输入的Surface
@@ -198,7 +201,7 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
                 override fun onActive(session: CameraCaptureSession) {
                     super.onActive(session)
                     // 会话主动处理Capture Request
-                    Log.i(TAG, "onActive")
+                    L.i(TAG, "onActive")
                 }
 
                 override fun onReady(session: CameraCaptureSession) {
@@ -206,19 +209,19 @@ class RecordActivity : AppCompatActivity(), View.OnClickListener {
                     // 每次会话没有更多的Capture Request时调用
                     // Camera完成自身配置没有Capture Request提交至会话也会调用
                     // 会话完成所有的Capture Request会回调
-                    Log.i(TAG, "onReady")
+                    L.i(TAG, "onReady")
                 }
 
                 override fun onConfigureFailed(session: CameraCaptureSession) {
                     val exc = RuntimeException("Camera $mCameraId session configuration failed")
-                    Log.e(TAG, exc.message, exc)
+                    L.e(TAG, exc.message, exc)
                 }
 
                 override fun onConfigured(session: CameraCaptureSession) {
                     // Camera完成自身配置，会话开始处理请求
                     // Capture Request已经在会话中排队，则立即调用onActive
                     // 没有提交Capture Request则调用onReady
-                    Log.i(TAG, "onConfigured")
+                    L.i(TAG, "onConfigured")
                     mCameraCaptureSession = session
 
                     // 设置各种参数

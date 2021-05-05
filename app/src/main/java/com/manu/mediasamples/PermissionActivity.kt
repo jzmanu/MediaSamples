@@ -13,8 +13,6 @@ import pub.devrel.easypermissions.PermissionRequest
 
 class PermissionActivity : AppCompatActivity(),EasyPermissions.PermissionCallbacks {
 
-    private var mHandler = Handler(Looper.getMainLooper())
-
     companion object {
         private const val TAG = "PermissionActivity"
         /** Camera权限请求Code */

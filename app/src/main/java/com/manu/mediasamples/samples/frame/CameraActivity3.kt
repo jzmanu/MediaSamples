@@ -62,7 +62,7 @@ class CameraActivity3 : AppCompatActivity(), View.OnClickListener {
     }
 
     init {
-        System.loadLibrary("native-yuv-to-buffer-lib")
+//        System.loadLibrary("native-yuv-to-buffer-lib")
     }
 
     companion object {
@@ -86,7 +86,7 @@ class CameraActivity3 : AppCompatActivity(), View.OnClickListener {
         binding.textureView.surfaceTextureListener = TextureListener()
     }
 
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btnRecord -> startRecord()
@@ -103,7 +103,7 @@ class CameraActivity3 : AppCompatActivity(), View.OnClickListener {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onDestroy() {
         super.onDestroy()
         startRecord()
@@ -167,7 +167,7 @@ class CameraActivity3 : AppCompatActivity(), View.OnClickListener {
     /**
      * 开启录制
      */
-    @RequiresApi(Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun startRecord() {
 
         if (!isCameraState) {

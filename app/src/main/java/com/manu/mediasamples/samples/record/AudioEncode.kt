@@ -1,11 +1,11 @@
 package com.manu.mediasamples.samples.record
 
-import android.media.*
-import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlin.properties.Delegates
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaFormat
+import android.media.MediaMuxer
+import android.widget.Toast
+import com.manu.mediasamples.util.L
 
 /**
  * @Desc: AudioEncode
@@ -13,51 +13,144 @@ import kotlin.properties.Delegates
  */
 object AudioEncode : MediaCodec.Callback() {
     private const val TAG = "AudioEncode"
-    /** 录音源为主麦克风 */
-    private const val AUDIO_SOURCE = MediaRecorder.AudioSource.MIC
-    /** 音频格式 */
-    private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-    /** 采样率 */
-    private const val SAMPLE_RATE = 44100
-    /** 声道配置 */
-    private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO
-
-    private var bufferSize by Delegates.notNull<Int>()
-
-    private lateinit var mAudioRecord: AudioRecord
     private lateinit var mAudioCodec: MediaCodec
     private lateinit var mAudioMuxer: MediaMuxer
 
-    private var presentationTimeUs:Long = 0
-    var mAudioTrackIndex = -1
+    private var pts: Long = 0
+    private var isAudioStreamEnd = false;
+    private lateinit var mAudioThread: AudioThread
 
-    fun initAudio(muxer: MediaMuxer){
-        Log.d(TAG, "initAudio")
-        bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
+    fun initAudio(muxer: MediaMuxer) {
+        L.i(TAG, "initAudio")
         this.mAudioMuxer = muxer
         initAudioCodec()
+        mAudioThread = AudioThread()
     }
 
     /**
      * 开始编码
      */
     fun startAudioEncode() {
-        Log.d(TAG, "startEncode")
+        L.i(TAG, "startEncode > mAudioMuxer:$mAudioMuxer")
         mAudioCodec.start()
+        mAudioThread.startRecord()
     }
 
     /**
      * 结束编码
      */
     fun stopAudioEncode() {
-        Log.d(TAG, "stopEncode")
+        L.i(TAG, "stopEncode")
         mAudioCodec.stop()
+        mAudioCodec.release()
+        mAudioThread.stopRecord()
+        RecordConfig.isAudioStop = true
+        if (RecordConfig.isVideoStop) {
+            mAudioMuxer.stop()
+            mAudioMuxer.release()
+            RecordConfig.isAudioStop = false
+        }
+    }
+
+    override fun onOutputBufferAvailable(
+        codec: MediaCodec,
+        index: Int,
+        info: MediaCodec.BufferInfo
+    ) {
+        L.i(
+            TAG,
+            "onOutputBufferAvailable index:$index, info->offset:${info.offset},size:${info.size}" +
+                    ",pts:${info.presentationTimeUs / 1000000} , isMuxerStart:${RecordConfig.isMuxerStart}"
+        )
+        // 如果发现MediaMuxer还未启动，则释放这个OutputBuffer
+        if (!RecordConfig.isMuxerStart) {
+            mAudioCodec.releaseOutputBuffer(index, false)
+            return
+        }
+        val outputBuffer = codec.getOutputBuffer(index) ?: return
+        if (info.size > 0) {
+            outputBuffer.position(info.offset)
+            outputBuffer.limit(info.size)
+            if (pts == 0L) {
+                info.presentationTimeUs = info.presentationTimeUs - pts
+            }
+            mAudioMuxer.writeSampleData(RecordConfig.audioTrackIndex, outputBuffer, info)
+            mAudioCodec.releaseOutputBuffer(index, false)
+        }
+    }
+
+    override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
+        L.i(
+            TAG,
+            "onInputBufferAvailable index:$index  ,isMuxerStart:${RecordConfig.isMuxerStart}"
+        )
+
+        val inputBuffer = codec.getInputBuffer(index)
+        val result = mAudioThread.poll()
+
+        if (result != null && result.size == 1 && result[0] == (-100).toByte()) {
+            isAudioStreamEnd = true
+        }
+
+        L.i(TAG, "result:$result , isAudioStreamEnd:$isAudioStreamEnd")
+        if (result != null && !isAudioStreamEnd) {
+            val readSize = result.size
+            inputBuffer?.clear()
+            inputBuffer?.limit(readSize)
+            inputBuffer?.put(result, 0, readSize)
+            pts = System.nanoTime() / 1000;
+            L.i(
+                TAG,
+                "pcm一帧时间戳 = ${pts / 1000000.0f}---pts:$pts"
+            )
+            mAudioCodec.queueInputBuffer(index, 0, readSize, pts, 0)
+        }
+
+        //如果为null就不调用queueInputBuffer  回调几次后就会导致无可用InputBuffer，从而导致MediaCodec任务结束 只能写个配置文件
+        if (result == null && !isAudioStreamEnd) {
+            codec.queueInputBuffer(
+                index,
+                0,
+                0,
+                0,
+                0
+            )
+        }
+
+        if (isAudioStreamEnd) {
+            codec.queueInputBuffer(
+                index,
+                0,
+                0,
+                0,
+                MediaCodec.BUFFER_FLAG_END_OF_STREAM
+            )
+        }
+    }
+
+    override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
+        L.i(TAG, "onOutputFormatChanged format:${format}")
+        addAudioTrack(format)
+        if (RecordConfig.videoTrackIndex != -1) {
+            mAudioMuxer.start()
+            RecordConfig.isMuxerStart = true
+            L.i(TAG, "onOutputFormatChanged isMuxerStart:${RecordConfig.isMuxerStart}")
+        }
+    }
+
+    override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+        L.i(TAG, "onError e:${e.message}")
     }
 
     private fun initAudioCodec() {
-        Log.i(TAG,"init Codec start")
+        L.i(TAG, "init Codec start")
         try {
-            val mediaFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 2)
+            val mediaFormat =
+                MediaFormat.createAudioFormat(
+                    MediaFormat.MIMETYPE_AUDIO_AAC,
+                    RecordConfig.SAMPLE_RATE,
+                    2
+                )
             mAudioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
             mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 96000)
             mediaFormat.setInteger(
@@ -67,113 +160,15 @@ object AudioEncode : MediaCodec.Callback() {
             mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 8192)
             mAudioCodec.setCallback(this)
             mAudioCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        }catch (e:Exception){
-            Log.i(TAG,"init error:${e.message}")
-        }
-        Log.i(TAG,"init Codec end")
-    }
-
-    fun startAudioRecord(){
-        if (bufferSize == AudioRecord.ERROR_BAD_VALUE){
-            Log.i(TAG,"参数异常")
-            return;
-        }
-
-        mAudioRecord = AudioRecord(AUDIO_SOURCE, SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize)
-        mAudioRecord.startRecording()
-
-//        CoroutineScope(Dispatchers.IO).launch{
-//            while (true){
-//                val byteArray = ByteArray(bufferSize)
-//                when (val result = mAudioRecord.read(byteArray, 0,bufferSize)) {
-//                    AudioRecord.ERROR_INVALID_OPERATION -> {
-//                        Log.i(TAG,"ERROR_INVALID_OPERATION")
-//                    }
-//                    AudioRecord.ERROR_BAD_VALUE -> {
-//                        Log.i(TAG,"ERROR_BAD_VALUE")
-//                    }
-//                    AudioRecord.ERROR_DEAD_OBJECT -> {
-//                        Log.i(TAG,"ERROR_DEAD_OBJECT")
-//                    }
-//                    AudioRecord.ERROR -> {
-//                        Log.i(TAG,"ERROR")
-//                    }
-//                    else -> {
-//                        encodePcmSource(byteArray,result)
-//                    }
-//                }
-//            }
-//        }
-    }
-
-    private fun encodePcmSource(buffIndex:Int,pcmBuffer: ByteArray, buffSize: Int) {
-        try {
-
-            val byteBuffer = mAudioCodec.getInputBuffer(buffIndex) ?: return
-            byteBuffer.clear()
-            byteBuffer.put(pcmBuffer)
-            // presentationTimeUs = 1000000L * (buffSize / 2) / sampleRate
-            // 一帧音频帧大小 int size = 采样率 x 位宽 x 采样时间 x 通道数
-            // 1s时间戳计算公式  presentationTimeUs = 1000000L * (totalBytes / sampleRate/ audioFormat / channelCount / 8 )
-            // totalBytes : 传入编码器的总大小
-            // 1000 000L : 单位为 微秒，换算后 = 1s,
-            //除以8     : pcm原始单位是bit, 1 byte = 8 bit, 1 short = 16 bit, 用 Byte[]、Short[] 承载则需要进行换算
-            presentationTimeUs += (1.0 * buffSize / (SAMPLE_RATE * 2 * (AUDIO_FORMAT / 8)) * 1000000.0).toLong()
-            Log.i(TAG,
-                "pcm一帧时间戳 = " + presentationTimeUs / 1000000.0f
-            )
-            mAudioCodec.queueInputBuffer(buffIndex, 0, buffSize, presentationTimeUs, 0)
         } catch (e: Exception) {
-            //audioCodec 线程对象已释放MediaCodec对象
-            Log.i(TAG,"encodePcmSource: ${e.message}")
+            L.i(TAG, "init error:${e.message}")
         }
+        L.i(TAG, "init Codec end")
     }
 
-    override fun onOutputBufferAvailable(
-        codec: MediaCodec,
-        index: Int,
-        info: MediaCodec.BufferInfo
-    ) {
-        Log.d(TAG,"onOutputBufferAvailable index:$index, info->offset:${info.offset},size:${info.size},pts:${info.presentationTimeUs/1000000}")
-        val outputBuffer = codec.getOutputBuffer(index) ?: return
-        outputBuffer.position(info.offset)
-        outputBuffer.limit(info.size)
-        if (presentationTimeUs == 0L){
-            info.presentationTimeUs = info.presentationTimeUs - presentationTimeUs
-        }
-        mAudioMuxer.writeSampleData(mAudioTrackIndex,outputBuffer,info)
-        mAudioCodec.releaseOutputBuffer(index,false)
-    }
-
-    override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-        Log.d(TAG,"onInputBufferAvailable index:$index")
-        val byteArray = ByteArray(bufferSize)
-        when (val result = mAudioRecord.read(byteArray, 0,bufferSize)) {
-            AudioRecord.ERROR_INVALID_OPERATION -> {
-                Log.i(TAG,"ERROR_INVALID_OPERATION")
-            }
-            AudioRecord.ERROR_BAD_VALUE -> {
-                Log.i(TAG,"ERROR_BAD_VALUE")
-            }
-            AudioRecord.ERROR_DEAD_OBJECT -> {
-                Log.i(TAG,"ERROR_DEAD_OBJECT")
-            }
-            AudioRecord.ERROR -> {
-                Log.i(TAG,"ERROR")
-            }
-            else -> {
-                encodePcmSource(index,byteArray,result)
-            }
-        }
-    }
-
-    override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
-        Log.d(TAG,"onOutputFormatChanged format:${format}")
-        mAudioTrackIndex = mAudioMuxer.addTrack(format)
-//        mAudioMuxer.start()
-    }
-
-    override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-        Log.d(TAG,"onError e:${e.message}")
+    private fun addAudioTrack(format: MediaFormat) {
+        L.i(TAG, "addAudioTrack format:${format}")
+        RecordConfig.audioTrackIndex = mAudioMuxer.addTrack(format)
+        RecordConfig.isAddAudioTrack = true
     }
 }

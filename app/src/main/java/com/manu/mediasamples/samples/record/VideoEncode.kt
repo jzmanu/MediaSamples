@@ -5,15 +5,15 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.os.Build
-import android.util.Log
 import android.view.Surface
-import kotlin.properties.Delegates
+import android.widget.Toast
+import com.manu.mediasamples.util.L
 
 /**
  * @Desc:VideoEncode
  * @Author: jzman
  */
-object VideoEncode : MediaCodec.Callback(){
+object VideoEncode : MediaCodec.Callback() {
     private const val TAG = "VideoEncode"
     private const val MIME_TYPE = MediaFormat.MIMETYPE_VIDEO_AVC
     private const val COLOR_FORMAT_SURFACE =
@@ -24,16 +24,13 @@ object VideoEncode : MediaCodec.Callback(){
     /** 用作数据流输入的Surface */
     private lateinit var mSurface: Surface
 
-    private var pts:Long = 0
-
-    /** 轨道索引 */
-    var mVideoTrackIndex= -1
+    private var pts: Long = 0
 
     /**
      * 初始化
      */
-    fun initVideo(width: Int, height: Int,muxer: MediaMuxer) {
-        Log.d(TAG, "initVideo")
+    fun initVideo(width: Int, height: Int, muxer: MediaMuxer) {
+        L.i(TAG, "initVideo")
         this.mVideoMuxer = muxer
         initCodec(width, height)
     }
@@ -49,7 +46,7 @@ object VideoEncode : MediaCodec.Callback(){
      * 开始编码
      */
     fun startVideoEncode() {
-        Log.d(TAG, "startEncode")
+        L.i(TAG, "startEncode > mVideoMuxer:${mVideoMuxer}")
         mVideoCodec.start()
     }
 
@@ -57,21 +54,73 @@ object VideoEncode : MediaCodec.Callback(){
      * 结束编码
      */
     fun stopVideoEncode() {
-        Log.d(TAG, "stopEncode")
+        L.i(TAG, "stopEncode")
         mVideoCodec.stop()
+        mVideoCodec.release()
+        RecordConfig.isVideoStop = true
+        if (RecordConfig.isAudioStop) {
+            mVideoMuxer.stop()
+            mVideoMuxer.release()
+            RecordConfig.isVideoStop = false
+        }
+    }
+
+    override fun onOutputBufferAvailable(
+        codec: MediaCodec,
+        index: Int,
+        info: MediaCodec.BufferInfo
+    ) {
+        L.i(
+            TAG,
+            "onOutputBufferAvailable index:$index, info->offset:${info.offset},size:${info.size}" +
+                    ",pts:${info.presentationTimeUs / 1000000} , isMuxerStart:${RecordConfig.isMuxerStart}"
+        )
+        // 如果发现MediaMuxer还未启动，则释放这个OutputBuffer
+        if (!RecordConfig.isMuxerStart) {
+            mVideoCodec.releaseOutputBuffer(index, false)
+            return
+        }
+        val outputBuffer = codec.getOutputBuffer(index) ?: return
+        if (info.size > 0) {
+            outputBuffer.position(info.offset)
+            outputBuffer.limit(info.size)
+            if (pts == 0L) {
+                info.presentationTimeUs = info.presentationTimeUs - pts
+            }
+            mVideoMuxer.writeSampleData(RecordConfig.videoTrackIndex, outputBuffer, info)
+            mVideoCodec.releaseOutputBuffer(index, false)
+        }
+    }
+
+    override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
+        L.i(TAG, "onInputBufferAvailable index:$index")
+    }
+
+    override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
+        L.i(TAG, "onOutputFormatChanged format:${format}")
+        addVideoTrack(format)
+        if (RecordConfig.audioTrackIndex != -1) {
+            mVideoMuxer.start()
+            RecordConfig.isMuxerStart = true
+        }
+    }
+
+    override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
+        L.i(TAG, "onError e:${e.message}")
     }
 
     /**
      * 初始化MediaCodec
      */
     private fun initCodec(width: Int, height: Int) {
-        Log.d(TAG, "initCodec start")
+        L.i(TAG, "initCodec start")
         try {
             // 创建MediaCodec
             mVideoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
             // 参数设置
             val mediaFormat = MediaFormat.createVideoFormat(MIME_TYPE, width, height)
-            mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+            mediaFormat.setInteger(
+                MediaFormat.KEY_COLOR_FORMAT,
                 COLOR_FORMAT_SURFACE
             ) // 颜色采样格式
             mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, width * height * 4) // 比特率
@@ -95,39 +144,15 @@ object VideoEncode : MediaCodec.Callback(){
             // 创建Surface作为MediaCodec的输入，createInputSurface只能在configure与start之间调用创建Surface
             mSurface = mVideoCodec.createInputSurface()
         } catch (e: Exception) {
-            Log.i(TAG, "initCodec fail:${e.message} ")
+            L.i(TAG, "initCodec fail:${e.message} ")
             e.printStackTrace()
         }
+        L.i(TAG, "initCodec end")
     }
 
-    override fun onOutputBufferAvailable(
-        codec: MediaCodec,
-        index: Int,
-        info: MediaCodec.BufferInfo
-    ) {
-        Log.d(TAG,"onOutputBufferAvailable index:$index, info->offset:${info.offset},size:${info.size},pts:${info.presentationTimeUs/1000000}")
-        val outputBuffer = codec.getOutputBuffer(index) ?: return
-        outputBuffer.position(info.offset)
-        outputBuffer.limit(info.size)
-        if (pts == 0L){
-            info.presentationTimeUs = info.presentationTimeUs - pts
-        }
-        mVideoMuxer.writeSampleData(mVideoTrackIndex,outputBuffer,info)
-        mVideoCodec.releaseOutputBuffer(index,false)
-    }
-
-    override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-        Log.d(TAG,"onInputBufferAvailable index:$index")
-    }
-
-    override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
-        Log.d(TAG,"onOutputFormatChanged format:${format}")
-        mVideoTrackIndex = mVideoMuxer.addTrack(format)
-//        if (AudioEncode.mAudioTrackIndex)
-        mVideoMuxer.start()
-    }
-
-    override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-        Log.d(TAG,"onError e:${e.message}")
+    private fun addVideoTrack(format: MediaFormat) {
+        L.i(TAG, "addVideoTrack format:${format}")
+        RecordConfig.videoTrackIndex = mVideoMuxer.addTrack(format)
+        RecordConfig.isAddVideoTrack = true
     }
 }
