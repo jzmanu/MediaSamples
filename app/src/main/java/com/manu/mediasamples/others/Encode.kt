@@ -1,4 +1,4 @@
-package com.manu.mediasamples
+package com.manu.mediasamples.others
 
 import android.content.Context
 import android.media.*

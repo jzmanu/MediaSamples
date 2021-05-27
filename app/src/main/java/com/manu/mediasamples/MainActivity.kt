@@ -5,11 +5,11 @@ import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import com.manu.mediasamples.samples.async.CameraActivity2
+import com.manu.mediasamples.samples.async.AsyncActivity
 import com.manu.mediasamples.databinding.ActivityMainBinding
-import com.manu.mediasamples.samples.frame.CameraActivity3
+import com.manu.mediasamples.samples.frame.ImageActivity
 import com.manu.mediasamples.samples.record.RecordActivity
-import com.manu.mediasamples.samples.sync.CameraActivity
+import com.manu.mediasamples.samples.sync.SyncActivity
 
 /**
  * @Desc: MainActivity
@@ -38,9 +38,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener{
 
     override fun onClick(v: View?) {
         when(v?.id){
-            R.id.btnSync -> startCameraActivity(CAMERA_TYPE,CameraActivity::class.java)
-            R.id.btnAsync -> startCameraActivity(CAMERA_TYPE,CameraActivity2::class.java)
-            R.id.btnImageReader -> startCameraActivity(CAMERA_TYPE,CameraActivity3::class.java)
+            R.id.btnSync -> startCameraActivity(CAMERA_TYPE,SyncActivity::class.java)
+            R.id.btnAsync -> startCameraActivity(CAMERA_TYPE,AsyncActivity::class.java)
+            R.id.btnImageReader -> startCameraActivity(CAMERA_TYPE,ImageActivity::class.java)
             R.id.btnRecord -> startCameraActivity(CAMERA_TYPE,RecordActivity::class.java)
         }
     }

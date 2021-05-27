@@ -1,5 +1,6 @@
 package com.manu.mediasamples.app
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 
@@ -14,6 +15,7 @@ class MediaApplication : Application() {
     }
 
     companion object{
+        @SuppressLint("StaticFieldLeak")
         lateinit var context: Context
     }
 }

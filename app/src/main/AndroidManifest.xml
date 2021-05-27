@@ -22,9 +22,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".MainActivity" />
-        <activity android:name=".samples.sync.CameraActivity" />
-        <activity android:name=".samples.async.CameraActivity2" />
-        <activity android:name=".samples.frame.CameraActivity3" />
+        <activity android:name=".samples.sync.SyncActivity" />
+        <activity android:name=".samples.async.AsyncActivity" />
+        <activity android:name=".samples.frame.ImageActivity" />
         <activity android:name=".samples.record.RecordActivity" />
     </application>
 

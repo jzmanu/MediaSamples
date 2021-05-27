@@ -48,6 +48,7 @@ class AudioThread {
         }
         recording = 1;
         mAudioRecord.startRecording()
+        mAudioRecord.recordingState
         Thread(RecordRunnable()).start();
     }
 
