@@ -7,6 +7,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.manu.mediasamples.samples.async.AsyncActivity
 import com.manu.mediasamples.databinding.ActivityMainBinding
+import com.manu.mediasamples.samples.audio.AudioTrackActivity
 import com.manu.mediasamples.samples.frame.ImageActivity
 import com.manu.mediasamples.samples.record.RecordActivity
 import com.manu.mediasamples.samples.sync.SyncActivity
@@ -34,18 +35,20 @@ class MainActivity : AppCompatActivity(), View.OnClickListener{
         binding.btnSync.setOnClickListener(this)
         binding.btnAsync.setOnClickListener(this)
         binding.btnRecord.setOnClickListener(this)
+        binding.btnAudioTrack.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
         when(v?.id){
-            R.id.btnSync -> startCameraActivity(CAMERA_TYPE,SyncActivity::class.java)
-            R.id.btnAsync -> startCameraActivity(CAMERA_TYPE,AsyncActivity::class.java)
-            R.id.btnImageReader -> startCameraActivity(CAMERA_TYPE,ImageActivity::class.java)
-            R.id.btnRecord -> startCameraActivity(CAMERA_TYPE,RecordActivity::class.java)
+            R.id.btnSync -> startSampleActivity(CAMERA_TYPE,SyncActivity::class.java)
+            R.id.btnAsync -> startSampleActivity(CAMERA_TYPE,AsyncActivity::class.java)
+            R.id.btnImageReader -> startSampleActivity(CAMERA_TYPE,ImageActivity::class.java)
+            R.id.btnRecord -> startSampleActivity(CAMERA_TYPE,RecordActivity::class.java)
+            R.id.btnAudioTrack -> startSampleActivity(CAMERA_TYPE,AudioTrackActivity::class.java)
         }
     }
 
-    private fun startCameraActivity(cameraId: String, clazz:Class<*>) {
+    private fun startSampleActivity(cameraId: String, clazz:Class<*>) {
         val intent = Intent(this, clazz)
         intent.putExtra(CAMERA_ID, cameraId)
         startActivity(intent)

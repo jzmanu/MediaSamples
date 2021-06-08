@@ -11,10 +11,11 @@ import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import pub.devrel.easypermissions.PermissionRequest
 
-class PermissionActivity : AppCompatActivity(),EasyPermissions.PermissionCallbacks {
+class PermissionActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
     companion object {
         private const val TAG = "PermissionActivity"
+
         /** Camera权限请求Code */
         private const val REQUEST_CODE_CAMERA = 0
     }
@@ -30,10 +31,10 @@ class PermissionActivity : AppCompatActivity(),EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
-        Log.d(TAG, "onPermissionsDenied")
-        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)){
+        Log.d(TAG, "onPermissionsDenied:${perms}")
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
             AppSettingsDialog.Builder(this).build().show();
-        }else{
+        } else {
             finish()
         }
     }
@@ -57,10 +58,13 @@ class PermissionActivity : AppCompatActivity(),EasyPermissions.PermissionCallbac
     }
 
     private fun requestPermission() {
-        val permissions = arrayOf(Manifest.permission.CAMERA,Manifest.permission.RECORD_AUDIO)
+        val permissions = arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO
+        )
         if (EasyPermissions.hasPermissions(this, *permissions)) {
             startMainActivity()
-        }else{
+        } else {
             EasyPermissions.requestPermissions(
                 PermissionRequest.Builder(this, REQUEST_CODE_CAMERA, *permissions)
                     .setNegativeButtonText(getString(R.string.permission_negative))
@@ -71,7 +75,7 @@ class PermissionActivity : AppCompatActivity(),EasyPermissions.PermissionCallbac
         }
     }
 
-    private fun startMainActivity(){
+    private fun startMainActivity() {
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }

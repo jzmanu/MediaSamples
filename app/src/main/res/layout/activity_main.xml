@@ -48,4 +48,14 @@
         app:layout_constraintStart_toStartOf="@+id/btnAsync"
         app:layout_constraintTop_toBottomOf="@+id/btnAsync" />
 
+    <Button
+        android:id="@+id/btnAudioTrack"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="AudioTrack"
+        app:layout_constraintEnd_toEndOf="@+id/btnRecord"
+        app:layout_constraintStart_toStartOf="@+id/btnRecord"
+        app:layout_constraintTop_toBottomOf="@+id/btnRecord" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

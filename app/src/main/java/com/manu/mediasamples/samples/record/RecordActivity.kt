@@ -26,7 +26,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * @Desc: Camera2
+ * @Desc: RecordActivity
  * @Author: jzman
  */
 class RecordActivity : AppCompatActivity(), View.OnClickListener {

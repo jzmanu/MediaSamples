@@ -6,7 +6,6 @@ import android.widget.Toast
 import com.manu.mediasamples.app.MediaApplication
 import com.manu.mediasamples.util.L
 import java.io.IOException
-import java.util.*
 
 /**
  * @Desc:
@@ -15,9 +14,6 @@ import java.util.*
 object EncodeManager {
     private const val TAG = "EncodeManager"
     private lateinit var mMediaMuxer: MediaMuxer
-    private val mTimer:Timer by lazy {
-        Timer()
-    }
 
     /**
      * 初始化
@@ -36,7 +32,6 @@ object EncodeManager {
         L.i(TAG, "startEncode")
         AudioEncode.startAudioEncode()
         VideoEncode.startVideoEncode()
-//        startMuxer()
     }
 
     /**
@@ -66,20 +61,5 @@ object EncodeManager {
                 "initMuxer fail: ${e.message}"
             )
         }
-    }
-
-    /**
-     * MediaMuxer start
-     */
-    private fun startMuxer(){
-        mTimer.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                if (RecordConfig.isAddAudioTrack && RecordConfig.isAddVideoTrack){
-                    mMediaMuxer.start()
-                    RecordConfig.isAddAudioTrack = false
-                    RecordConfig.isAddVideoTrack = false
-                }
-            }
-        } , 5, 10)
     }
 }

@@ -1,7 +1,6 @@
 package com.manu.mediasamples.samples.record
 
 import android.media.AudioRecord
-import android.os.SystemClock
 import com.manu.mediasamples.util.L
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.properties.Delegates
