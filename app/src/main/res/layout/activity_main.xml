@@ -58,4 +58,14 @@
         app:layout_constraintStart_toStartOf="@+id/btnRecord"
         app:layout_constraintTop_toBottomOf="@+id/btnRecord" />
 
+    <Button
+        android:id="@+id/btnOpenGL"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="OpenGL ES Reader Video"
+        app:layout_constraintEnd_toEndOf="@+id/btnAudioTrack"
+        app:layout_constraintStart_toStartOf="@+id/btnAudioTrack"
+        app:layout_constraintTop_toBottomOf="@+id/btnAudioTrack" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
