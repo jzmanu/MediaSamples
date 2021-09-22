@@ -8,6 +8,7 @@ import android.view.Surface
  * @Date: 2021/8/5.
  */
 interface IRender {
-    fun draw()
+    fun draw(mvpMatrix: FloatArray)
     fun getSurface():Surface
+    fun setTextureID(id: Int)
 }

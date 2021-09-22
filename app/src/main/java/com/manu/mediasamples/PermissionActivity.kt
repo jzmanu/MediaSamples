@@ -60,7 +60,8 @@ class PermissionActivity : AppCompatActivity(), EasyPermissions.PermissionCallba
     private fun requestPermission() {
         val permissions = arrayOf(
             Manifest.permission.CAMERA,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
         if (EasyPermissions.hasPermissions(this, *permissions)) {
             startMainActivity()

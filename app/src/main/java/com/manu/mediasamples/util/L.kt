@@ -9,7 +9,7 @@ import com.manu.mediasamples.BuildConfig
  * @Date: 2021/4/24 11:57.
  */
 object L {
-    private const val TAG = "MS"
+    private const val TAG = "MLog"
     fun i(tag: String, msg: String) {
         if (BuildConfig.DEBUG) {
             Log.i(TAG, "$tag > $msg")

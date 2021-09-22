@@ -6,5 +6,5 @@ package com.manu.mediasamples.samples.opengl
  * @Date: 2021/8/13.
  */
 object Config {
-    const val DEFAULT = true
+    const val DEFAULT = false
 }
