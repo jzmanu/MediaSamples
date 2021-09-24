@@ -10,6 +10,7 @@
 - [x] `MediaMuxer` 的使用
 - [x] `AudioRecord` 采集音频数据，
 - [x] 音频数据与视频数据通过 `MediaMuxer` 合成 `MP4`
+- [x] OpenGL ES视频渲染及画面矫正
 - [ ] `Camera` 帧数据处理，后续补充完善
 - [ ] 继续完善和补充
 
@@ -21,6 +22,7 @@
 - [Android原生编解码接口MediaCodec详解](https://mp.weixin.qq.com/s/TDgoDfC2K00iH2e9g_mb8Q)
 - [音频基础知识](https://mp.weixin.qq.com/s/SOh2BQHpXZGFj2jcvqyzgA)
 - [AudioRecord采集音频数据及合成](https://mp.weixin.qq.com/s/VjZiqUvZXBx261NOkxHkGA)
+- [OpenGL ES渲染播放视频](https://mp.weixin.qq.com/s/V1VMDappRxs94ZaZMk-Uwg)
 - [如何正确编译ijkplayer](https://mp.weixin.qq.com/s/i_c7DbB5H7bE4X13hH83Bw)
 
 
