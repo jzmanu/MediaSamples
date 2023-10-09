@@ -2,6 +2,7 @@
 #include "libavformat/avformat.h"
 #include "audio_sample.h"
 #include "video_sample.h"
+#include "avio_audio_sample.h"
 
 int main(int argc, char **argv) {
     // 从命令行接收参数
@@ -15,5 +16,7 @@ int main(int argc, char **argv) {
     // audio sample
 //    decodeAudio(inFileName,outFileName);
     // video sample
-    decodeVideo(inFileName, outFileName);
+//    decodeVideo(inFileName, outFileName);
+    // 自定义IO
+    decodeAudioWithIO(inFileName, outFileName);
 }

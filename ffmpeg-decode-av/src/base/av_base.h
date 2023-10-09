@@ -19,4 +19,11 @@ void testFfmpeg();
  */
 void printAVFrameInfo(AVFrame *frame);
 
+/**
+ * 错误码转换
+ * @param ret
+ * @return
+ */
+char * avGetErr(int ret);
+
 #endif // DECODE_AV_DECODE_BASE_H

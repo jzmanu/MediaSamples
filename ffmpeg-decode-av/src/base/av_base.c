@@ -19,3 +19,9 @@ void printAVFrameInfo(AVFrame *frame){
     printf("width:%d\n", frame->width);
     printf("height:%d\n", frame->height);
 }
+
+char * avGetErr(int ret){
+    static char err_buf[128] = {0};
+    av_strerror(ret, err_buf, 128);
+    return err_buf;
+}

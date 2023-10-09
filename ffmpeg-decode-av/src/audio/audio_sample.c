@@ -120,7 +120,7 @@ void startAudioDecode(AVCodecContext *ctx, AVPacket *avPkt, AVFrame * avFrame, F
     // 将包含压缩数据的AVPacket发送到解码器
     ret = avcodec_send_packet(ctx, avPkt);
     if (ret < 0){
-        fprintf(stderr, "Error submitting the packet to the decoder.\n");
+        fprintf(stderr, "Error submitting the packet to the decoder, err:%s\n", avGetErr(ret));
         exit(1);
     }
     while (1){
