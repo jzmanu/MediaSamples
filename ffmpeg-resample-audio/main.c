@@ -198,6 +198,21 @@ int main(int argc, char **argv) {
         fwrite(dst_data[0], 1, dst_bufsize, dst_file);
     } while (t < 10);
 
+    // 8. 刷新采样缓冲区
+    ret = swr_convert(swr_ctx, dst_data, dst_nb_samples, NULL, 0);
+    if (ret < 0) {
+        fprintf(stderr, "Error while converting\n");
+        goto end;
+    }
+    dst_bufsize = av_samples_get_buffer_size(&dst_linesize, dst_nb_channels,
+                                             ret, dst_sample_fmt, 1);
+    if (dst_bufsize < 0) {
+        fprintf(stderr, "Could not get sample buffer size\n");
+        goto end;
+    }
+    printf("flush in:%d out:%d\n", 0, ret);
+    fwrite(dst_data[0], 1, dst_bufsize, dst_file);
+
     if ((ret = get_format_from_sample_fmt(&fmt, dst_sample_fmt)) < 0)
         goto end;
     fprintf(stderr, "Resampling succeeded. Play the output file with the command:\n"
